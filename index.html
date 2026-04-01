@@ -87,7 +87,7 @@
         .header-actions {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 16px;
             flex-shrink: 0;
             padding-top: 4px;
         }
@@ -390,11 +390,14 @@
                 <a href="https://github.com/patrikbartas/rampcalc" target="_blank" rel="noopener" class="gh-link" title="GitHub repozitár">
                     <svg width="20" height="20" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
                 </a>
+                <a href="mailto:patrik.bartas@gmail.com?subject=Na%C5%A1iel%20som%20bug%20na%20rampcalc" class="gh-link" title="Nahlásiť bug">
+                    <svg width="19" height="19" viewBox="0 0 24 24"><path d="M19 8h2.5a1 1 0 110 2H19v1c0 .6-.1 1.2-.2 1.8l2.8 1.6a1 1 0 01-.5 1.9 1 1 0 01-.5-.1l-2.5-1.4c-.8 1.5-2 2.7-3.6 3.4V13h-1v5.7a6 6 0 01-3.6-3.4L7.4 16.7a1 1 0 01-1.4-.4 1 1 0 01.4-1.4l2.8-1.6A7 7 0 019 11v-1H6.5a1 1 0 110-2H9V7.1A5 5 0 017.4 5L5.7 3.3a1 1 0 011.4-1.4L8.8 3.6A4.9 4.9 0 0112 2.5c1.2 0 2.3.4 3.2 1.1l1.7-1.7a1 1 0 011.4 1.4L16.6 5A5 5 0 0115 7.1V8z"/></svg>
+                </a>
                 <button class="theme-toggle" onclick="toggleTheme()" title="Prepnúť tému" id="themeBtn">&#9790;</button>
             </div>
         </div>
         <p class="header-story">
-            Tento projekt vznikol 1. apríla 2025 za cca 20 minút na dva prompty pomocou Claude Code.
+            Tento projekt vznikol 1. apríla 2026 za cca 20 minút na dva prompty pomocou Claude Code.
             Cieľ bol jednoduchý — mať po ruke rýchly nástroj na overenie dĺžky garážovej rampy podľa STN 73 6058,
             bez toho aby ste museli vždy počítať ručne. Zdrojový kód je na GitHube, deploy na Verceli. Enjoy.
         </p>
@@ -426,6 +429,7 @@
             <div class="pills">
                 <label class="pill"><input type="radio" name="trans" value="curve" checked onchange="onTransChange()">Výškové oblúky</label>
                 <label class="pill"><input type="radio" name="trans" value="alt" onchange="onTransChange()">Alternatívne — medzisklon 5 %</label>
+                <label class="pill"><input type="radio" name="trans" value="none" onchange="onTransChange()">Bez nábehov</label>
             </div>
         </div>
 
@@ -484,12 +488,12 @@ function toggleTheme() {
 function onTransChange() {
     const trans = radio('trans');
     const vg = $('vehicleGroup');
-    if (trans === 'alt') {
-        vg.classList.remove('visible');
-        vg.classList.add('hidden');
-    } else {
+    if (trans === 'curve') {
         vg.classList.remove('hidden');
         vg.classList.add('visible');
+    } else {
+        vg.classList.remove('visible');
+        vg.classList.add('hidden');
     }
     calc();
 }
@@ -527,7 +531,7 @@ function calc() {
             warn: ok ? '' : `Výška ${f(H)} m je príliš malá. Minimum pre tieto oblúky: ${f(h1 + h2)} m.`,
             hzLen: 5, altLen: 0, altSlope: 0
         };
-    } else {
+    } else if (trans === 'alt') {
         const altS = 0.05;
         const altL = 4;
         const hzL = 5;
@@ -545,6 +549,19 @@ function calc() {
             H,
             warn: ok ? '' : `Výška ${f(H)} m je príliš malá. Minimum: ${f(2 * hAlt)} m.`,
             hzLen: hzL, altLen: altL, altSlope: altS
+        };
+    } else {
+        // no transitions
+        const LStr = H / s;
+        r = {
+            ok: true, s, slopePct, rv1, rv2, trans,
+            topL: 0, topH: 0,
+            strL: LStr, strH: H,
+            botL: 0, botH: 0,
+            total: LStr,
+            H,
+            warn: '',
+            hzLen: 5, altLen: 0, altSlope: 0
         };
     }
 
@@ -569,13 +586,17 @@ function renderResults(r) {
     </div>`;
 
     // rows
-    h += rtRow('#e67e22', 'Horný nábeh', topSub, r.topL, r.topH);
-
-    if (r.ok) {
-        h += rtRow('#4a90d9', 'Priamy úsek', strSub, r.strL, r.strH);
+    if (r.trans !== 'none') {
+        h += rtRow('#e67e22', 'Horný nábeh', topSub, r.topL, r.topH);
     }
 
-    h += rtRow('#9b59b6', 'Dolný nábeh', botSub, r.botL, r.botH);
+    if (r.ok) {
+        h += rtRow('#4a90d9', r.trans === 'none' ? 'Rampa' : 'Priamy úsek', strSub, r.strL, r.strH);
+    }
+
+    if (r.trans !== 'none') {
+        h += rtRow('#9b59b6', 'Dolný nábeh', botSub, r.botL, r.botH);
+    }
 
     // total or warning
     if (r.ok) {
@@ -628,7 +649,7 @@ function renderViz(r) {
         const h2 = r.botH;
         push('quad', { sx: x, sy: y, cx: x + L2/2, cy: y + h2, ex: x + L2, ey: y + h2, color: '#9b59b6', lw: LW_MAIN });
         x += L2; y += h2;
-    } else {
+    } else if (r.trans === 'alt') {
         const aL = r.altLen;
         const aH = r.altSlope * aL;
 
@@ -640,6 +661,10 @@ function renderViz(r) {
 
         push('line', {x1: x, y1: y, x2: x + aL, y2: y + aH, color: '#9b59b6', lw: LW_MAIN});
         x += aL; y += aH;
+    } else {
+        // no transitions — just straight slope
+        push('line', {x1: x, y1: y, x2: x + r.strL, y2: y + r.strH, color: '#4a90d9', lw: LW_MAIN});
+        x += r.strL; y += r.strH;
     }
 
     push('line', {x1: x, y1: y, x2: x + EXT, y2: y, color: isDark ? '#444' : '#ccc', lw: LW});
@@ -706,11 +731,10 @@ function renderViz(r) {
     $('viz').innerHTML = svg;
 
     // segment bar
-    const barSegs = [
-        { label: 'Horný nábeh', length: r.topL, color: '#e67e22' },
-        { label: `Priamy úsek (${r.slopePct} %)`, length: r.strL, color: '#4a90d9' },
-        { label: 'Dolný nábeh', length: r.botL, color: '#9b59b6' },
-    ];
+    const barSegs = [];
+    if (r.trans !== 'none') barSegs.push({ label: 'Horný nábeh', length: r.topL, color: '#e67e22' });
+    barSegs.push({ label: r.trans === 'none' ? `Rampa (${r.slopePct} %)` : `Priamy úsek (${r.slopePct} %)`, length: r.strL, color: '#4a90d9' });
+    if (r.trans !== 'none') barSegs.push({ label: 'Dolný nábeh', length: r.botL, color: '#9b59b6' });
     const totalL = r.total;
 
     let barH = '<div class="seg-bar">';
