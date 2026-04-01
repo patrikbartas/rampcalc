@@ -118,12 +118,9 @@
 
         /* ── inputs ── */
         .input-row {
-            display: flex;
-            gap: 16px;
             margin-bottom: 18px;
-            align-items: flex-end;
         }
-        .input-group { flex: 1; }
+        .input-group { width: 100%; }
         .input-group label {
             display: block;
             font-size: 0.8rem;
@@ -202,60 +199,101 @@
             max-height: 120px;
         }
 
-        /* ── results ── */
-        .results-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1px;
-            background: var(--result-border);
+        /* ── results table ── */
+        .results-table {
+            width: 100%;
             border: 1px solid var(--result-border);
             border-radius: 10px;
             overflow: hidden;
         }
-        .result-item {
-            padding: 14px 16px;
+        .rt-header {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1px;
+            background: var(--result-border);
+        }
+        .rt-header span {
             background: var(--card);
+            padding: 8px 14px;
+            font-size: 0.62rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text4);
+        }
+        .rt-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1px;
+            background: var(--result-border);
+            border-top: 1px solid var(--result-border);
+        }
+        .rt-cell {
+            background: var(--card);
+            padding: 12px 14px;
             transition: background 0.3s;
         }
-        .result-item.total {
-            background: var(--total-bg);
-            grid-column: 1 / -1;
+        .rt-cell .rc-label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
-        .result-item.warning {
-            background: var(--warn-bg);
-            grid-column: 1 / -1;
-        }
-        .result-item .rlabel {
+        .rt-cell .rc-sub {
             font-size: 0.65rem;
             color: var(--text4);
-            margin-bottom: 3px;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-            font-weight: 600;
+            margin-top: 2px;
         }
-        .result-item .rvalue {
-            font-size: 1.15rem;
+        .rt-cell .rc-val {
+            font-size: 1.1rem;
             font-weight: 700;
             color: var(--text);
         }
-        .result-item .rvalue .ru {
-            font-size: 0.78rem;
+        .rt-cell .rc-val .ru {
+            font-size: 0.75rem;
             font-weight: 400;
             color: var(--text4);
             margin-left: 2px;
         }
-        .result-item.total .rlabel { color: #27ae60; }
-        .result-item.total .rvalue { font-size: 1.4rem; }
-
-        /* ── color dots on result labels ── */
-        .result-item .rlabel .rdot {
+        .rdot {
             display: inline-block;
-            width: 7px; height: 7px;
+            width: 8px; height: 8px;
             border-radius: 50%;
-            margin-right: 4px;
-            vertical-align: middle;
-            position: relative;
-            top: -1px;
+            flex-shrink: 0;
+        }
+        .rt-total {
+            border-top: 1px solid var(--result-border);
+            padding: 14px;
+            background: var(--total-bg);
+            transition: background 0.3s;
+        }
+        .rt-total .rc-label {
+            font-size: 0.62rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #27ae60;
+            margin-bottom: 2px;
+        }
+        .rt-total .rc-val {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+        .rt-total .rc-val .ru {
+            font-size: 0.82rem;
+            font-weight: 400;
+            color: var(--text4);
+            margin-left: 2px;
+        }
+        .rt-warn {
+            border-top: 1px solid var(--result-border);
+            padding: 14px;
+            background: var(--warn-bg);
+            font-size: 0.85rem;
+            color: #e74c3c;
         }
 
         /* ── visualization ── */
@@ -339,12 +377,7 @@
 
         @media (max-width: 700px) {
             body { padding: 12px; }
-            .results-grid { grid-template-columns: 1fr 1fr; }
             .pills { flex-direction: column; }
-            .input-row { flex-direction: column; }
-        }
-        @media (max-width: 450px) {
-            .results-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -399,15 +432,15 @@
         <div class="option-group visible" id="vehicleGroup">
             <label>Kategória vozidiel</label>
             <div class="pills">
-                <label class="pill"><input type="radio" name="vehicle" value="std" checked onchange="calc()">Všetky vozidlá (rv1 = 12 m, rv2 = 20 m)</label>
-                <label class="pill"><input type="radio" name="vehicle" value="bus" onchange="calc()">Autobusy (rv1 = 20 m, rv2 = 75 m)</label>
+                <label class="pill"><input type="radio" name="vehicle" value="std" checked onchange="calc()">Všetky vozidlá (12 m a 20 m)</label>
+                <label class="pill"><input type="radio" name="vehicle" value="bus" onchange="calc()">Autobusy (20 m a 75 m)</label>
             </div>
         </div>
     </div>
 
     <div class="card">
         <h2>Výsledky</h2>
-        <div class="results-grid" id="results"></div>
+        <div class="results-table" id="results"></div>
     </div>
 
     <div class="card">
@@ -522,43 +555,44 @@ function calc() {
 
 /* ───── results panel ───── */
 function renderResults(r) {
+    const isCurve = r.trans === 'curve';
+
+    const topSub = isCurve ? `rv1 = ${r.rv1} m (vypuklý)` : `medzisklon 5 %, dĺžka 4 m`;
+    const strSub = `sklon ${r.slopePct} %`;
+    const botSub = isCurve ? `rv2 = ${r.rv2} m (vydutý)` : `medzisklon 5 %, dĺžka 4 m`;
+
     let h = '';
 
-    h += item('Sklon rampy', `${r.slopePct}`, '%');
-    if (r.trans === 'curve') {
-        h += item('Polomer rv1 (vypuklý)', `${r.rv1}`, 'm');
-        h += item('Polomer rv2 (vydutý)', `${r.rv2}`, 'm');
-    } else {
-        h += item('Medzisklon', '5', '%');
-        h += item('Dĺžka medzisklonu', '4,00', 'm');
-    }
+    // header
+    h += `<div class="rt-header">
+        <span>Úsek</span><span>Dĺžka</span><span>Výška</span>
+    </div>`;
 
-    h += item('Horný nábeh — dĺžka', f(r.topL), 'm', '#e67e22');
-    h += item('Horný nábeh — výška', f(r.topH), 'm', '#e67e22');
-    h += '<div style="display:none"></div>';
+    // rows
+    h += rtRow('#e67e22', 'Horný nábeh', topSub, r.topL, r.topH);
 
     if (r.ok) {
-        h += item('Priamy úsek — dĺžka', f(r.strL), 'm', '#4a90d9');
-        h += item('Priamy úsek — výška', f(r.strH), 'm', '#4a90d9');
-        h += '<div style="display:none"></div>';
+        h += rtRow('#4a90d9', 'Priamy úsek', strSub, r.strL, r.strH);
     }
 
-    h += item('Dolný nábeh — dĺžka', f(r.botL), 'm', '#9b59b6');
-    h += item('Dolný nábeh — výška', f(r.botH), 'm', '#9b59b6');
-    h += '<div style="display:none"></div>';
+    h += rtRow('#9b59b6', 'Dolný nábeh', botSub, r.botL, r.botH);
 
+    // total or warning
     if (r.ok) {
-        h += `<div class="result-item total"><div class="rlabel">Celková dĺžka rampy</div><div class="rvalue">${f(r.total)}<span class="ru">m</span></div></div>`;
+        h += `<div class="rt-total"><div class="rc-label">Celková dĺžka rampy</div><div class="rc-val">${f(r.total)}<span class="ru">m</span></div></div>`;
     } else {
-        h += `<div class="result-item warning"><div class="rlabel">Upozornenie</div><div class="rvalue" style="font-size:.88rem;color:#e74c3c;">${r.warn}</div></div>`;
+        h += `<div class="rt-warn">${r.warn}</div>`;
     }
 
     $('results').innerHTML = h;
 }
 
-function item(label, val, unit, dotColor) {
-    const dot = dotColor ? `<span class="rdot" style="background:${dotColor};"></span>` : '';
-    return `<div class="result-item"><div class="rlabel">${dot}${label}</div><div class="rvalue">${val}<span class="ru">${unit}</span></div></div>`;
+function rtRow(color, name, sub, length, height) {
+    return `<div class="rt-row">
+        <div class="rt-cell"><div class="rc-label"><span class="rdot" style="background:${color};"></span>${name}</div><div class="rc-sub">${sub}</div></div>
+        <div class="rt-cell"><div class="rc-val">${f(length)}<span class="ru">m</span></div></div>
+        <div class="rt-cell"><div class="rc-val">${f(height)}<span class="ru">m</span></div></div>
+    </div>`;
 }
 
 /* ───── SVG visualisation ───── */
