@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalkulačka rampy pre vozidlá</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #f0f2f5;
+            color: #1a1a2e;
+            padding: 24px;
+            min-height: 100vh;
+        }
+        .container { max-width: 960px; margin: 0 auto; }
+
+        h1 {
+            font-size: 1.6rem;
+            margin-bottom: 6px;
+            color: #1a1a2e;
+            font-weight: 700;
+        }
+        .subtitle {
+            font-size: 0.85rem;
+            color: #888;
+            margin-bottom: 24px;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 14px;
+            padding: 24px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.03);
+        }
+        .card h2 {
+            font-size: 0.8rem;
+            margin-bottom: 18px;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 18px;
+            align-items: flex-end;
+        }
+        .input-group { flex: 1; }
+        .input-group label {
+            display: block;
+            font-size: 0.82rem;
+            color: #555;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+        .input-group input[type="number"] {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid #e4e7ec;
+            border-radius: 10px;
+            font-size: 1.05rem;
+            outline: none;
+            transition: border-color 0.2s;
+            font-family: inherit;
+        }
+        .input-group input:focus { border-color: #4a90d9; }
+        .unit-hint { font-size: 0.78rem; color: #aaa; margin-top: 3px; }
+
+        .option-group { margin-bottom: 18px; }
+        .option-group > label {
+            display: block;
+            font-size: 0.82rem;
+            color: #555;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        .pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .pill {
+            display: block;
+            padding: 9px 18px;
+            border: 2px solid #e4e7ec;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.88rem;
+            transition: all 0.15s;
+            user-select: none;
+            background: #fff;
+            color: #444;
+        }
+        .pill:hover { border-color: #b0c4de; }
+        .pill input { display: none; }
+        .pill:has(input:checked) {
+            border-color: #4a90d9;
+            background: #eef4fc;
+            color: #2a6cb8;
+            font-weight: 600;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        .result-item {
+            padding: 14px 16px;
+            background: #f8f9fb;
+            border-radius: 10px;
+            border-left: 3px solid #d0d5dd;
+            transition: all 0.2s;
+        }
+        .result-item.top { border-left-color: #e67e22; }
+        .result-item.straight { border-left-color: #4a90d9; }
+        .result-item.bottom { border-left-color: #9b59b6; }
+        .result-item.total {
+            border-left-color: #27ae60;
+            background: #f0f9f4;
+            grid-column: 1 / -1;
+        }
+        .result-item.info { border-left-color: #95a5a6; }
+        .result-item.warning {
+            border-left-color: #e74c3c;
+            background: #fef5f4;
+            grid-column: 1 / -1;
+        }
+        .result-item .rlabel {
+            font-size: 0.72rem;
+            color: #999;
+            margin-bottom: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            font-weight: 600;
+        }
+        .result-item .rvalue {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #1a1a2e;
+        }
+        .result-item .rvalue .ru {
+            font-size: 0.82rem;
+            font-weight: 400;
+            color: #aaa;
+            margin-left: 2px;
+        }
+        .result-item.total .rvalue { font-size: 1.5rem; }
+
+        .viz-container {
+            width: 100%;
+            overflow: visible;
+        }
+        svg text { font-family: 'Segoe UI', system-ui, sans-serif; }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px solid #f0f0f0;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+            color: #777;
+        }
+        .legend-dot {
+            width: 10px; height: 10px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+
+        .seg-bar {
+            display: flex;
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 14px;
+        }
+        .seg-bar-item { height: 100%; transition: width 0.3s; }
+        .seg-labels {
+            display: flex;
+            width: 100%;
+            margin-top: 4px;
+        }
+        .seg-label {
+            text-align: center;
+            font-size: 0.68rem;
+            color: #888;
+            font-weight: 600;
+            transition: width 0.3s;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+        .seg-label .sl-name {
+            font-size: 0.62rem;
+            font-weight: 400;
+            color: #aaa;
+            display: block;
+        }
+        .seg-total {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid #f0f0f0;
+            font-size: 0.78rem;
+            color: #777;
+        }
+        .seg-total strong {
+            font-size: 0.92rem;
+            color: #333;
+        }
+
+        @media (max-width: 700px) {
+            body { padding: 12px; }
+            .results-grid { grid-template-columns: 1fr 1fr; }
+            .pills { flex-direction: column; }
+            .input-row { flex-direction: column; }
+        }
+        @media (max-width: 450px) {
+            .results-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Kalkulačka rampy</h1>
+    <p class="subtitle">Výpočet dĺžky šikmej rampy pre vozidlá podľa STN 73 6058</p>
+
+    <div class="card">
+        <h2>Vstupné parametre</h2>
+
+        <div class="input-row">
+            <div class="input-group">
+                <label>Výškový rozdiel</label>
+                <input type="number" id="inHeight" value="3.0" min="0.1" max="30" step="0.05" oninput="calc()">
+                <div class="unit-hint">metre (m)</div>
+            </div>
+        </div>
+
+        <div class="option-group">
+            <label>Typ rampy</label>
+            <div class="pills">
+                <label class="pill"><input type="radio" name="rampType" value="14" checked onchange="calc()">Vnútorná priamočiara (14 %)</label>
+                <label class="pill"><input type="radio" name="rampType" value="13" onchange="calc()">Vnútorná krivočiara (13 %)</label>
+                <label class="pill"><input type="radio" name="rampType" value="10" onchange="calc()">Vonkajšia hlavná (10 %)</label>
+                <label class="pill"><input type="radio" name="rampType" value="17" onchange="calc()">Vyrovnávacia / polo (17 %)</label>
+            </div>
+        </div>
+
+        <div class="option-group">
+            <label>Kategória vozidiel</label>
+            <div class="pills">
+                <label class="pill"><input type="radio" name="vehicle" value="std" checked onchange="calc()">Všetky vozidlá (rv1 = 12 m, rv2 = 20 m)</label>
+                <label class="pill"><input type="radio" name="vehicle" value="bus" onchange="calc()">Autobusy (rv1 = 20 m, rv2 = 75 m)</label>
+            </div>
+        </div>
+
+        <div class="option-group">
+            <label>Riešenie prechodov (nábehov)</label>
+            <div class="pills">
+                <label class="pill"><input type="radio" name="trans" value="curve" checked onchange="calc()">Výškové oblúky</label>
+                <label class="pill"><input type="radio" name="trans" value="alt" onchange="calc()">Alternatívne — medzisklon 5 %</label>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Výsledky</h2>
+        <div class="results-grid" id="results"></div>
+    </div>
+
+    <div class="card">
+        <h2>Pozdĺžny profil rampy</h2>
+        <div class="viz-container" id="viz"></div>
+        <div id="vizBar"></div>
+        <div id="vizNote" style="text-align:right;font-size:0.68rem;color:#ccc;margin-top:2px;font-style:italic;"></div>
+    </div>
+</div>
+
+<script>
+/* ───── helpers ───── */
+const $ = id => document.getElementById(id);
+const radio = name => document.querySelector(`input[name="${name}"]:checked`).value;
+const f = (v, d = 2) => v.toFixed(d);
+
+/* ───── main calc ───── */
+function calc() {
+    const H = parseFloat($('inHeight').value) || 0;
+    const slopePct = parseInt(radio('rampType'));
+    const s = slopePct / 100;
+    const veh = radio('vehicle');
+    const trans = radio('trans');
+
+    const rv1 = veh === 'bus' ? 20 : 12;   // convex (top)
+    const rv2 = veh === 'bus' ? 75 : 20;   // concave (bottom)
+
+    let r; // results object
+
+    if (trans === 'curve') {
+        const L1 = rv1 * s;
+        const h1 = rv1 * s * s / 2;
+        const L2 = rv2 * s;
+        const h2 = rv2 * s * s / 2;
+        const hStr = H - h1 - h2;
+        const ok = hStr >= 0;
+        const LStr = ok ? hStr / s : 0;
+
+        r = {
+            ok, s, slopePct, rv1, rv2, trans,
+            topL: L1, topH: h1,
+            strL: LStr, strH: ok ? hStr : 0,
+            botL: L2, botH: h2,
+            total: ok ? L1 + LStr + L2 : 0,
+            H,
+            warn: ok ? '' : `Výška ${f(H)} m je príliš malá. Minimum pre tieto oblúky: ${f(h1 + h2)} m.`,
+            // for viz
+            hzLen: 5,
+            altLen: 0, altSlope: 0
+        };
+    } else {
+        const altS = 0.05;
+        const altL = 4;
+        const hzL = 5;
+        const hAlt = altS * altL; // 0.20 m each
+        const hStr = H - 2 * hAlt;
+        const ok = hStr >= 0;
+        const LStr = ok ? hStr / s : 0;
+
+        r = {
+            ok, s, slopePct, rv1, rv2, trans,
+            topL: hzL + altL, topH: hAlt,
+            strL: LStr, strH: ok ? hStr : 0,
+            botL: altL + hzL, botH: hAlt,
+            total: ok ? hzL + altL + LStr + altL + hzL : 0,
+            H,
+            warn: ok ? '' : `Výška ${f(H)} m je príliš malá. Minimum: ${f(2 * hAlt)} m.`,
+            hzLen: hzL,
+            altLen: altL, altSlope: altS
+        };
+    }
+
+    renderResults(r);
+    renderViz(r);
+}
+
+/* ───── results panel ───── */
+function renderResults(r) {
+    let h = '';
+
+    h += item('Sklon rampy', `${r.slopePct}`, '%', 'info');
+    if (r.trans === 'curve') {
+        h += item('Polomer rv1 (vypuklý)', `${r.rv1}`, 'm', 'info');
+        h += item('Polomer rv2 (vydutý)', `${r.rv2}`, 'm', 'info');
+    } else {
+        h += item('Medzisklon', '5', '%', 'info');
+        h += item('Dĺžka medzisklonu', '4,00', 'm', 'info');
+    }
+
+    h += item('Horný nábeh — dĺžka', f(r.topL), 'm', 'top');
+    h += item('Horný nábeh — výška', f(r.topH), 'm', 'top');
+    h += '<div style="display:none"></div>'; // grid filler
+
+    if (r.ok) {
+        h += item('Priamy úsek — dĺžka', f(r.strL), 'm', 'straight');
+        h += item('Priamy úsek — výška', f(r.strH), 'm', 'straight');
+        h += '<div style="display:none"></div>';
+    }
+
+    h += item('Dolný nábeh — dĺžka', f(r.botL), 'm', 'bottom');
+    h += item('Dolný nábeh — výška', f(r.botH), 'm', 'bottom');
+    h += '<div style="display:none"></div>';
+
+    if (r.ok) {
+        h += `<div class="result-item total"><div class="rlabel">Celková dĺžka rampy</div><div class="rvalue">${f(r.total)}<span class="ru">m</span></div></div>`;
+    } else {
+        h += `<div class="result-item warning"><div class="rlabel">Upozornenie</div><div class="rvalue" style="font-size:.92rem;color:#e74c3c;">${r.warn}</div></div>`;
+    }
+
+    $('results').innerHTML = h;
+}
+
+function item(label, val, unit, cls) {
+    return `<div class="result-item ${cls}"><div class="rlabel">${label}</div><div class="rvalue">${val}<span class="ru">${unit}</span></div></div>`;
+}
+
+/* ───── SVG visualisation ───── */
+function renderViz(r) {
+    if (!r.ok) {
+        $('viz').innerHTML = '<p style="color:#c0392b;text-align:center;padding:32px 0;">Neplatné parametre — profil sa nedá vykresliť.</p>';
+        $('vizBar').innerHTML = '';
+        $('vizNote').textContent = '';
+        return;
+    }
+
+    const EXT = 5;
+    const segments = [];
+    let x = 0, y = 0;
+
+    const LW = 0.6;
+    const LW_MAIN = 1.0;
+
+    push('line', {x1: x, y1: y, x2: x + EXT, y2: y, color: '#ccc', lw: LW});
+    x += EXT;
+
+    if (r.trans === 'curve') {
+        const L1 = r.rv1 * r.s;
+        const h1 = r.topH;
+        push('quad', { sx: x, sy: y, cx: x + L1/2, cy: y, ex: x + L1, ey: y + h1, color: '#e67e22', lw: LW_MAIN });
+        x += L1; y += h1;
+
+        push('line', {x1: x, y1: y, x2: x + r.strL, y2: y + r.strH, color: '#4a90d9', lw: LW_MAIN});
+        x += r.strL; y += r.strH;
+
+        const L2 = r.rv2 * r.s;
+        const h2 = r.botH;
+        push('quad', { sx: x, sy: y, cx: x + L2/2, cy: y + h2, ex: x + L2, ey: y + h2, color: '#9b59b6', lw: LW_MAIN });
+        x += L2; y += h2;
+    } else {
+        const aL = r.altLen;
+        const aH = r.altSlope * aL;
+
+        push('line', {x1: x, y1: y, x2: x + aL, y2: y + aH, color: '#e67e22', lw: LW_MAIN});
+        x += aL; y += aH;
+
+        push('line', {x1: x, y1: y, x2: x + r.strL, y2: y + r.strH, color: '#4a90d9', lw: LW_MAIN});
+        x += r.strL; y += r.strH;
+
+        push('line', {x1: x, y1: y, x2: x + aL, y2: y + aH, color: '#9b59b6', lw: LW_MAIN});
+        x += aL; y += aH;
+    }
+
+    push('line', {x1: x, y1: y, x2: x + EXT, y2: y, color: '#ccc', lw: LW});
+    x += EXT;
+
+    const W = x, H_total = y;
+
+    // vertical exaggeration
+    const naturalAspect = W / (H_total || 1);
+    const vScale = naturalAspect > 5 ? Math.min(naturalAspect / 3.5, 6) : 1;
+
+    for (const seg of segments) {
+        if (seg.type === 'line') { seg.y1 *= vScale; seg.y2 *= vScale; }
+        if (seg.type === 'quad') { seg.sy *= vScale; seg.cy *= vScale; seg.ey *= vScale; }
+    }
+
+    const Hv = H_total * vScale;
+    const PAD = Math.max(W, Hv) * 0.06;
+    const vbW = W + PAD * 2;
+    const vbH = Hv + PAD * 2;
+
+    let svg = `<svg viewBox="${-PAD} ${-PAD} ${vbW} ${vbH}" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-height:280px;">`;
+
+    // ground fill
+    let pathD = `M${segments[0].x1},${segments[0].y1} `;
+    for (const seg of segments) {
+        if (seg.type === 'line') pathD += `L${seg.x2},${seg.y2} `;
+        if (seg.type === 'quad') pathD += `Q${seg.cx},${seg.cy} ${seg.ex},${seg.ey} `;
+    }
+    const lastSeg = segments[segments.length - 1];
+    const endX = lastSeg.type === 'line' ? lastSeg.x2 : lastSeg.ex;
+    const groundY = Hv + PAD * 0.4;
+    pathD += `L${endX},${groundY} L${segments[0].x1},${groundY} Z`;
+    svg += `<path d="${pathD}" fill="#f0ebe4" opacity="0.4"/>`;
+
+    // dashed level lines
+    svg += `<line x1="0" y1="0" x2="${W}" y2="0" stroke="#ddd" stroke-width="0.3" stroke-dasharray="1.5,1.5"/>`;
+    svg += `<line x1="0" y1="${Hv}" x2="${W}" y2="${Hv}" stroke="#ddd" stroke-width="0.3" stroke-dasharray="1.5,1.5"/>`;
+
+    // draw segments
+    for (const seg of segments) {
+        if (seg.type === 'line') {
+            svg += `<line x1="${seg.x1}" y1="${seg.y1}" x2="${seg.x2}" y2="${seg.y2}" stroke="${seg.color}" stroke-width="${seg.lw}" stroke-linecap="round"/>`;
+        } else {
+            svg += `<path d="M${seg.sx},${seg.sy} Q${seg.cx},${seg.cy} ${seg.ex},${seg.ey}" stroke="${seg.color}" stroke-width="${seg.lw}" fill="none" stroke-linecap="round"/>`;
+        }
+    }
+
+    // small slope % label on the straight section only
+    const ss = segments.find(s => s.color === '#4a90d9');
+    if (ss && ss.type === 'line') {
+        const mx = (ss.x1 + ss.x2) / 2;
+        const my = (ss.y1 + ss.y2) / 2;
+        const dx = ss.x2 - ss.x1;
+        const dy = ss.y2 - ss.y1;
+        const ang = Math.atan2(dy, dx) * 180 / Math.PI;
+        const fs = Math.max(1.2, Math.min(2, W * 0.012));
+        svg += `<text x="${mx}" y="${my - fs * 1.2}" text-anchor="middle" font-size="${fs}" fill="#4a90d9" font-weight="700" opacity="0.7" transform="rotate(${ang},${mx},${my - fs * 1.2})">${r.slopePct} %</text>`;
+    }
+
+    svg += '</svg>';
+    $('viz').innerHTML = svg;
+
+    // ── segment bar below ──
+    const barSegs = [
+        { label: 'Horný nábeh', length: r.topL, height: r.topH, color: '#e67e22' },
+        { label: `Priamy úsek (${r.slopePct} %)`, length: r.strL, height: r.strH, color: '#4a90d9' },
+        { label: 'Dolný nábeh', length: r.botL, height: r.botH, color: '#9b59b6' },
+    ];
+    const totalL = r.total;
+
+    let barH = '<div class="seg-bar">';
+    let labH = '<div class="seg-labels">';
+    for (const s of barSegs) {
+        const pct = (s.length / totalL * 100);
+        barH += `<div class="seg-bar-item" style="width:${pct}%;background:${s.color};"></div>`;
+        labH += `<div class="seg-label" style="width:${pct}%;color:${s.color};">${f(s.length)} m<span class="sl-name">${s.label}</span></div>`;
+    }
+    barH += '</div>';
+    labH += '</div>';
+
+    let totalH = `<div class="seg-total">
+        <span>Celková dĺžka <strong>${f(totalL)} m</strong></span>
+        <span>Výška <strong>${f(r.H)} m</strong></span>
+    </div>`;
+
+    $('vizBar').innerHTML = barH + labH + totalH;
+
+    // exaggeration note
+    $('vizNote').textContent = vScale > 1 ? `vertikálne zväčšenie ${f(vScale, 1)}x` : '';
+
+    function push(type, props) { segments.push({type, ...props}); }
+}
+
+// init
+calc();
+</script>
+</body>
+</html>
